@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Minus major="2" minor="0" version="V1.0.0">
+   <Config>
+       <DbUser>cOraUser/OraDB001@cct_my_dblink</DbUser>
+       <MakeTable></MakeTable>
+   </Config>
+   <In>
+      <Path>DataRoot/DataSecond/AAADataSecondDB/DataSecondAAASqlFiles</Path>
+      <Path>DataRoot/DataSecond/BBBDataSecondDB/DataSecondBBBSqlFiles</Path>
+      <Type>AAA</Type>
+      <Type>BBB</Type>
+   </In>
+   <Var>
+      <User>ora001.</User>
+      <CondUser>ora001</CondUser>
+      <ActionType></ActionType>
+      <OutType></OutType>
+      <TableCsv></TableCsv>
+      <CurrentTable></CurrentTable>
+      <HistoryTable></HistoryTable>
+      <HistoryTableList></HistoryTableList>
+      <SelectOutCols></SelectOutCols>
+      <SelectSeqCols></SelectSeqCols>
+      <WhereConds></WhereConds>
+      <SelectKeyCols></SelectKeyCols>
+      <WhereAndCond></WhereAndCond>
+      <CurrentTableSlice></CurrentTableSlice>
+      <HistoryTableSlice></HistoryTableSlice>
+      <PkName></PkName>
+      <PkCols></PkCols>
+      <IdxName></IdxName>
+      <IdxCols></IdxCols>
+      <FirstSelectKey></FirstSelectKey>
+   </Var>
+   <Action on="">
+      <Cond condVar="SelectKeyCols" condChar="in" condValue="," join="and">|</Cond>
+      <Cond condVar="TableCsv,TableCsv,TableCsv" condChar=">=,>=,>=" condValue="0,0,0" join="and,and">lenint</Cond>
+      <Cond condVar="TableCsv,TableCsv,TableCsv" condChar="!=,!=,!=" condValue="null,null,null" join="and,or">string</Cond>
+      <Replace condVar="ActionType" condChar="" condValue="">assign</Replace>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Text>set trims on;
+set wrap off ;
+set linesize 4000;
+set echo off;
+set termout off;
+set feedback off;
+set pagesize 0;
+spool [TableCsv].csv
+select '-| '||[SelectOutCols]  
+from [HistoryTableList] 
+where [WhereAndCond] ([SelectKeyCols]) in 
+  (
+      select [SelectKeyCols] 
+      from [HistoryTableList] [WhereConds] 
+    minus 
+      select [SelectKeyCols] 
+      from [CurrentTable]  [WhereConds] 
+  )  
+  and [FirstSelectKey] not in
+  ( 
+     select [FirstSelectKey] from [CurrentTable] 
+  )
+union all
+select '+| '||[SelectOutCols]
+from [CurrentTable]
+where [WhereAndCond] ([SelectKeyCols]) in 
+  (
+     select [SelectKeyCols]
+     from [CurrentTable] [WhereConds] 
+    minus 
+     select [SelectKeyCols]
+     from [HistoryTableList] [WhereConds] 
+  )
+  and [FirstSelectKey] in 
+  (
+      select a.[FirstSelectKey]
+      from 
+        ( select [FirstSelectKey], count(1) as num from [HistoryTableList] group by [FirstSelectKey]) a 
+      inner join
+        (select [FirstSelectKey], count(1) as num from [CurrentTable] group by [FirstSelectKey]) b
+      on a.[FirstSelectKey]=b.[FirstSelectKey] 
+      and b.num>a.num
+  )
+  or [FirstSelectKey] not in
+  ( 
+     select [FirstSelectKey] from [HistoryTableList] 
+  )
+union all
+select '#| '||[SelectOutCols]  
+from [CurrentTable] 
+where [WhereAndCond] ([SelectKeyCols]) in 
+  (
+    select [SelectKeyCols] 
+    from 
+    (
+        select [SelectSeqCols] 
+        from [CurrentTable] [WhereConds] 
+      minus 
+        select [SelectSeqCols] 
+        from [HistoryTableList] [WhereConds]
+    )
+  )
+  and [FirstSelectKey] in 
+  (
+      select a.[FirstSelectKey] 
+      from 
+          ( select [FirstSelectKey], count(1) as num from [HistoryTableList] group by [FirstSelectKey]) a 
+      inner join
+          (select [FirstSelectKey], count(1) as num from [CurrentTable] group by [FirstSelectKey]) b
+      on a.[FirstSelectKey]=b.[FirstSelectKey] 
+      and b.num=a.num
+  );
+spool off;
+      </Text>
+   </Action>
+   <Action on="">
+      <Cond condVar="SelectKeyCols,TableCsv" condChar=">,>=" condValue="0,0" join="and">lenint</Cond>
+      <Cond condVar="SelectKeyCols" condChar="not-in" condValue="," join="and">|</Cond>
+      <Replace condVar="ActionType" condChar="" condValue="">assign</Replace>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Text>set trims on;
+set wrap off ;
+set linesize 4000;
+set echo off;
+set termout off;
+set feedback off;
+set pagesize 0;
+spool [TableCsv].csv
+select '-| '||[SelectOutCols]  
+from [HistoryTableList] 
+where [WhereAndCond] ([SelectKeyCols]) in 
+  (
+      select [SelectKeyCols] 
+      from [HistoryTableList] [WhereConds] 
+    minus 
+      select [SelectKeyCols] 
+      from [CurrentTable]  [WhereConds] 
+  )
+union all
+select '+| '||[SelectOutCols]
+from [CurrentTable]
+where [WhereAndCond] ([SelectKeyCols]) in 
+  (
+     select [SelectKeyCols]
+     from [CurrentTable] [WhereConds] 
+    minus 
+     select [SelectKeyCols]
+     from [HistoryTableList] [WhereConds] 
+  )
+union all
+select '#| '||[SelectOutCols]  
+from [CurrentTable] 
+where [WhereAndCond] ([SelectKeyCols]) in 
+  (
+    select [SelectKeyCols] 
+    from 
+    (
+        select [SelectSeqCols] 
+        from [CurrentTable] [WhereConds] 
+      minus 
+        select [SelectSeqCols] 
+        from [HistoryTableList] [WhereConds]
+    )
+  );
+spool off;
+      </Text>
+   </Action>
+   <Action on="">
+      <Cond condVar="SelectKeyCols,TableCsv,TableCsv" condChar="==,>=,>=" condValue="0,0,0" join="and,and">lenint</Cond>
+      <Replace condVar="ActionType" condChar="" condValue="">assign</Replace>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Text>set trims on;
+set wrap off ;
+set linesize 4000;
+set echo off;
+set termout off;
+set feedback off;
+set pagesize 0;
+spool [TableCsv].csv
+select '-| '||[SelectOutCols] 
+from 
+  (
+      select [SelectSeqCols] 
+      from [HistoryTableList] [WhereConds] 
+    minus 
+      select [SelectSeqCols] 
+      from [CurrentTable] [WhereConds]
+  );
+union all
+select '+| '||[SelectOutCols] 
+from 
+  (
+      select [SelectSeqCols] 
+      from [CurrentTable] [WhereConds] 
+    minus 
+      select [SelectSeqCols] 
+      from [HistoryTableList] [WhereConds]
+  );
+spool off;
+      </Text>
+   </Action>
+   <Action on="" mapField="PkName" file="new/WithCondAddPk.sql">
+      <Cond condVar="SelectKeyCols" condChar=">=" condValue="0">lenint</Cond>
+      <Replace condVar="ActionType" condChar="" condValue="WithCondAddPk">assign</Replace>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <Replace condVar="PkName" condChar="_" condValue="PK_D">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <Replace condVar="PkName" condChar="_" condValue="PK_C">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <Replace condVar="PkName" condChar="_" condValue="PK_D">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <Replace condVar="PkName" condChar="_" condValue="PK_C">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Text>
+declare num number; begin select count(1) into num from all_cons_columns cu, all_constraints au where au.OWNER=cu.OWNER and au.OWNER='[CondUser]' and cu.constraint_name = au.constraint_name and au.constraint_type = 'P' and au.table_name = '[HistoryTableSlice]'; if num=0 then execute immediate 'alter table [User][HistoryTableSlice] add constraint [PkName] primary key([PkCols]);'; end if; end;</Text>
+   </Action>
+   <Action on="" mapField="IdxName" file="new/WithCondAddIndex.sql">
+      <Cond condVar="SelectKeyCols" condChar=">=" condValue="0">lenint</Cond>
+      <Replace condVar="ActionType" condChar="" condValue="WithCondAddIndex">assign</Replace>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <Replace condVar="IdxName" condChar="_" condValue="IND_D">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <Replace condVar="IdxName" condChar="_" condValue="IND_C">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <Replace condVar="IdxName" condChar="_" condValue="IND_D">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <Replace condVar="IdxName" condChar="_" condValue="IND_C">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Text>
+ declare num number; begin select count(1) into num from all_ind_columns t,all_indexes i where i.TABLE_OWNER = t.TABLE_OWNER and t.index_name = i.index_name and t.table_name = i.table_name and t.table_name = '[HistoryTableSlice]' and i.index_name not in(select cu.constraint_name from all_cons_columns cu, all_constraints au where au.OWNER=cu.OWNER and au.OWNER='[CondUser]' and cu.constraint_name = au.constraint_name and au.constraint_type = 'P' and au.table_name = '[HistoryTableSlice]'); if num=0 then execute immediate 'create index [IdxName] on [User][HistoryTableSlice]([IdxCols])'; end if; end;</Text>
+   </Action>
+   <Action on="" mapField="PkName" file="new/pk.sql">
+      <Cond condVar="SelectKeyCols" condChar=">=" condValue="0">lenint</Cond>
+      <Replace condVar="ActionType" condChar="" condValue="DirectAddPk">assign</Replace>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <Replace condVar="PkName" condChar="_" condValue="PK_D">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="PkName" condChar="_" condValue="PK_C">front</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <Replace condVar="PkName" condChar="_" condValue="PK_D">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <Replace condVar="PkName" condChar="_" condValue="PK_C">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Text>
+alter table [User][HistoryTableSlice] add constraint [PkName] primary key([PkCols]);</Text>
+   </Action>
+   <Action on="" mapField="IdxName" file="new/index.sql">
+      <Cond condVar="SelectKeyCols" condChar=">=" condValue="0">lenint</Cond>
+      <Replace condVar="ActionType" condChar="" condValue="DirectAddIndex">assign</Replace>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <Replace condVar="IdxName" condChar="_" condValue="IND_D">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="AAA">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <Replace condVar="IdxName" condChar="_" condValue="IND_C">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="XXX_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]XXX_">string</Replace>
+          <Replace condVar="IdxName" condChar="_" condValue="IND_D">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]DeltaSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Out>
+          <Cond condVar="OutType" condChar="=="condValue="BBB">string</Cond>
+          <Replace condVar="HistoryTable" condChar="PREX_" condValue="YYY_">string</Replace>
+          <Replace condVar="HistoryTableList" condChar="PREX_" condValue="[User]YYY_">string</Replace>
+          <Replace condVar="IdxName" condChar="_" condValue="IND_C">front</Replace>
+          <File>new/DataRoot/DataSecond/[OutType]DataSecondDB/DataSecond[OutType][ActionType]IntermediateSqlFiles/[TableCsv].sql</File>
+      </Out>
+      <Text>
+create index [IdxName] on [User][HistoryTableSlice]([IdxCols]);</Text>
+   </Action>
+</Minus>
