@@ -29,6 +29,7 @@ type SQLModelConfig struct {
 	Var    SQLVar      `xml:"Var"`
 	Action []SQLAction `xml:"Action"`
 }
+
 type SQLConfig struct {
 	DbUser    string `xml:"DbUser"`
 	MakeTable string `xml:"MakeTable"`
